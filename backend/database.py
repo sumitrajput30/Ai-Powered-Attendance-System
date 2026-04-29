@@ -24,16 +24,34 @@ async def get_db():
     return db.client.get_database("attendance")
 
 async def connect_to_mongo():
-    print(f"Connecting to MongoDB at: {settings.mongodb_url}")
-    db.client = AsyncIOMotorClient(
-        settings.mongodb_url,
-        tls=True,
-        tlsInsecure=True,           # Bypass TLS cert/version negotiation issues on Windows
-        serverSelectionTimeoutMS=30000,
-        connectTimeoutMS=20000,
-        socketTimeoutMS=20000,
-    )
-    print("Connected to MongoDB")
+    print(f"Connecting to MongoDB...")
+    try:
+        db.client = AsyncIOMotorClient(
+            settings.mongodb_url,
+            tls=True,
+            tlsCAFile=certifi.where(),
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=5000,
+        )
+        # Send a ping to confirm a successful connection
+        await db.client.admin.command('ping')
+        print("Successfully connected to MongoDB")
+    except Exception as e:
+        print(f"Could not connect to MongoDB: {e}")
+        # Fallback for local development or if SSL issues persist
+        print("Retrying with tlsInsecure=True...")
+        db.client = AsyncIOMotorClient(
+            settings.mongodb_url,
+            tls=True,
+            tlsInsecure=True,
+            serverSelectionTimeoutMS=5000,
+        )
+        try:
+            await db.client.admin.command('ping')
+            print("Connected to MongoDB (Insecure Mode)")
+        except Exception as e2:
+            print(f"Failed to connect even in insecure mode: {e2}")
+            raise e2
 
 async def close_mongo_connection():
     if db.client:

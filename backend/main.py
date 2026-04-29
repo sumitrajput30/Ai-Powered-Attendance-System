@@ -12,6 +12,7 @@ app = FastAPI(title="AI-Powered Attendance System")
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://ai-powered-attendance-system-sigma.vercel.app",
 ]
 
 frontend_url = os.getenv("FRONTEND_URL")
@@ -20,8 +21,8 @@ if frontend_url:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=origins if os.getenv("ENVIRONMENT") == "production" else ["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -31,14 +32,16 @@ async def global_exception_handler(request: Request, exc: Exception):
     # Print the traceback for debugging
     traceback.print_exc()
     
-    allowed_origin = "http://localhost:5173"
+    headers = {}
     req_origin = request.headers.get("origin")
-    if req_origin in origins:
-        allowed_origin = req_origin
+    if req_origin in origins or (os.getenv("ENVIRONMENT") != "production"):
+        headers["Access-Control-Allow-Origin"] = req_origin or "*"
+        headers["Access-Control-Allow-Credentials"] = "true"
 
     return JSONResponse(
         status_code=500,
-        content={"message": "Internal Server Error", "detail": str(exc)}
+        content={"message": "Internal Server Error", "detail": str(exc)},
+        headers=headers
     )
 
 app.include_router(auth.router)

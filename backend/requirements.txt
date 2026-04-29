@@ -10,3 +10,5 @@ pydantic[email]
 python-multipart
 numpy
 opencv-python
+dnspython
+certifi
